@@ -73,6 +73,17 @@ CTPersistentQueueTest >> testEmptyQueueHasNoElements [
 ]
 
 { #category : 'tests' }
+CTPersistentQueueTest >> testEmptyQueuesAreEqual [
+    | empty1 empty2 |
+    empty1 := CTPersistentQueue empty.
+    empty2 := CTPersistentQueue empty.
+    
+    self assert: empty1 equals: empty2.
+    self assert: empty1 hash equals: empty2 hash.
+    self assert: empty1 asArray isEmpty.
+]
+
+{ #category : 'tests' }
 CTPersistentQueueTest >> testEnqueuePreservesImmutability [
     | q1 q2 |
     q1 := CTPersistentQueue empty.
@@ -112,6 +123,44 @@ CTPersistentQueueTest >> testHash [
     
     self assert: q1 hash equals: q2 hash.
     self deny: q1 = q3.
+]
+
+{ #category : 'tests' }
+CTPersistentQueueTest >> testInterleavedOperations [
+    | q1 q2 q3 q4 q5 result |
+    
+    q1 := CTPersistentQueue empty enqueue: 'A'.
+    q2 := q1 enqueue: 'B'.
+    
+    "Pop 'A'. The queue (q3) now functionally contains only 'B'."
+    result := q2 dequeue.
+    self assert: result key equals: 'A'.
+    q3 := result value.
+    
+    "Push 'C' onto the queue. FrontStack has 'B', RearStack has 'C'."
+    q4 := q3 enqueue: 'C'.
+    self assert: q4 peek equals: 'B'.
+    
+    "Pop 'B'. This should force a structural merge."
+    result := q4 dequeue.
+    self assert: result key equals: 'B'.
+    q5 := result value.
+    
+    self assert: q5 asArray equals: #('C').
+]
+
+{ #category : 'tests' }
+CTPersistentQueueTest >> testPersistenceBranching [
+    | base branchA branchB |
+    base := CTPersistentQueue empty enqueue: 'Root'.
+    
+    "Thread 1 pushes A, Thread 2 pushes B from the exact same point in time"
+    branchA := base enqueue: 'A'.
+    branchB := base enqueue: 'B'.
+    
+    self assert: branchA asArray equals: #('Root' 'A').
+    self assert: branchB asArray equals: #('Root' 'B').
+    self assert: base asArray equals: #('Root').
 ]
 
 { #category : 'tests' }
